@@ -7,7 +7,7 @@ AI-agent-oriented coding reference for projects (Express + React + PostgreSQL).
 | Document | Scope |
 |---|---|
 | [architecture.md](./architecture.md) | Layer pattern, data flow, DI |
-| [backend-conventions.md](./backend-conventions.md) | Server folder layout, services, controllers, repositories |
+| [backend-conventions.md](./backend-conventions.md) | Server folder layout, logger (Winston + Morgan), services, controllers, repositories |
 | [frontend-conventions.md](./frontend-conventions.md) | React components, contexts, routes, API client |
 | [database-conventions.md](./database-conventions.md) | Prisma schema rules |
 | [testing-conventions.md](./testing-conventions.md) | Jest setup, mocking strategy |

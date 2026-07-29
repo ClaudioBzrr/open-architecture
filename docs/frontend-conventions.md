@@ -6,7 +6,8 @@
 web/src/
 ├── app.tsx              # Root component (provider tree)
 ├── main.tsx             # ReactDOM entry point
-├── components/          # Reusable UI components (barrel-exported via index.ts)
+├── components/          # Reusable UI components — one folder per component
+│   │                     # Each folder: index.tsx + index.module.css + index.ts (optional)
 │   ├── button/
 │   ├── card/
 │   ├── data-table/
@@ -26,6 +27,7 @@ web/src/
 │   ├── auth-context.tsx
 │   └── filter-context.tsx
 ├── pages/               # One directory per route/page
+│   │                     # Each folder: index.tsx + index.module.css + index.ts (optional)
 │   ├── login/
 │   ├── reset-password/
 │   └── dashboard/
@@ -289,13 +291,27 @@ import { Button, Modal } from "@/components";
 
 ### Component Structure
 
-Each component lives in its own directory:
+Each component lives in its own directory. Directory names are lowercase, using kebab-case for multi-word names:
 ```
-components/button/
-├── index.ts          # Barrel export
-├── button.tsx        # Component implementation
-└── button.css        # Styles (if not using CSS modules)
+components/my-button/
+├── index.tsx          # Component implementation (default export)
+├── index.module.css   # Styles using CSS Modules
+└── index.ts           # (Optional) Barrel export, types, or sub-components
 ```
+
+Pages follow the same pattern:
+```
+pages/dashboard/reports/
+├── index.tsx          # Page component (default export)
+├── index.module.css   # Styles using CSS Modules
+└── index.ts           # (Optional) Barrel export, types, or sub-components
+```
+
+**Rules:**
+- The component/page file is **always `index.tsx`** — no separate named file like `button.tsx`.
+- Styles use **CSS Modules** — file is `index.module.css`, imported as `import styles from "./index.module.css"`.
+- Include `index.ts` only when the folder needs a barrel export, additional types, or sub-components.
+- Folder name is **lowercase kebab-case** (`my-button`, `data-table`).
 
 ## Theme (CSS Custom Properties)
 
@@ -323,3 +339,18 @@ Custom OOXML implementation in `utils/export.ts`. Prefer native browser APIs ove
 ## Path Alias
 
 `@/` maps to `src/`. Configured via `tsconfig.app.json` paths and `vite-tsconfig-paths`.
+
+## File Naming
+
+All filenames must be **lowercase**. Use **kebab-case** for multi-word names.
+
+| Type | Pattern | Examples |
+|---|---|---|
+| Component/page folders | `lowercase-kebab-case` | `my-button/`, `data-table/`, `user-profile-card/` |
+| Regular files | `lowercase-kebab-case.ext` | `auth-context.tsx`, `api-client.ts`, `export-utils.ts` |
+| TypeScript files | `.ts` or `.tsx` (when JSX needed) | `index.tsx`, `api-types.ts` |
+
+**Exceptions — only these preserve original casing:**
+- React component function names (PascalCase inside the file).
+- CSS custom properties (`--color-primary`).
+- Environment variables (`VITE_API_URL`).

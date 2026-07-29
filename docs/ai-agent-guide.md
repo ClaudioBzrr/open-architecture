@@ -12,6 +12,8 @@ Cheat sheet for AI agents working in this codebase. Read this first, then dive i
 6. **No direct DB access from feature code.** Use repository interfaces.
 7. **Commit in English.** Conventional commits format: `type: description`.
 8. **Document in English.** All docs in US English.
+9. **Use Docker for everything.** Run `docker compose up` for development and `docker compose -f docker-compose.yml -f docker-compose.prod.yml` for production. Never skip containers — no bare `npm run dev` in instructions.
+10. **Lowercase filenames everywhere.** All files and folders use lowercase with kebab-case. No camelCase, PascalCase, or mixed-case filenames (exceptions: environment variables, CSS custom properties, component function names inside files, and platform-recognized files like `Dockerfile`).
 
 ## Architecture Decision Tree
 
@@ -29,36 +31,39 @@ New data source?
   → Inject into services that need it
 
 New UI page?
-  → Create directory in web/src/pages/dashboard/
+  → Create directory in web/src/pages/dashboard/ (lowercase kebab-case)
   → Add route in web/src/routes/index.tsx with PageRoute guard
-   → Add page key to NAV_ITEMS array
-  → Create page component
+  → Add page key to NAV_ITEMS array
+  → Create index.tsx + index.module.css in the page directory
 
 New UI component?
-  → Create directory in web/src/components/
+  → Create directory in web/src/components/ (lowercase kebab-case)
+  → Create index.tsx + index.module.css + (optional) index.ts
   → Export through components/index.ts
 ```
 
 ## File Placement Rules
 
-| What | Where |
-|---|---|
-| Repository interface | `server/src/types/repositories/` |
-| Repository implementation | `server/src/repositories/{prisma,fetch,db,xlsx,bcrypt}/` |
-| Repository DI wiring | `server/src/repositories/index.ts` |
-| Adapter interface | `server/src/adapters/` |
-| Adapter implementation | `server/src/adapters/{nodemailer,...}/` |
-| Service | `server/src/services/{domain}-service/` |
-| Controller | `server/src/controllers/{domain}-controller.ts` |
-| Route | `server/src/routes/{domain}-routes.ts` |
-| Domain types / entities | `server/src/types/entities/` |
-| Shared middlewares | `server/src/common/` |
-| Unit tests | `server/__tests__/services/{domain}/` |
-| Frontend page | `web/src/pages/dashboard/{page-name}/` |
-| Frontend component | `web/src/components/{component-name}/` |
-| Frontend context | `web/src/contexts/` |
-| Frontend types | `web/src/types/` |
-| Frontend utils | `web/src/utils/` |
+| What | Where | Files |
+|---|---|---|---|
+| Repository interface | `server/src/types/repositories/` | `{domain}-repository.ts` |
+| Repository implementation | `server/src/repositories/{prisma,fetch,db,xlsx,bcrypt}/` | `{source}-{entity}-repository.ts` |
+| Repository DI wiring | `server/src/repositories/index.ts` | `index.ts` |
+| Adapter interface | `server/src/adapters/` | `{domain}-adapter.ts` |
+| Adapter implementation | `server/src/adapters/{nodemailer,...}/` | `{provider}-{domain}-adapter.ts` |
+| Service | `server/src/services/{domain}-service/` | `{action}-{domain}-service.ts` |
+| Controller | `server/src/controllers/` | `{domain}-controller.ts` |
+| Route | `server/src/routes/` | `{domain}-routes.ts` |
+| Domain types / entities | `server/src/types/entities/` | `{entity}.ts` |
+| Shared middlewares | `server/src/common/` | `{middleware-name}.ts` |
+| Unit tests | `server/__tests__/services/{domain}/` | `{service-name}.test.ts` |
+| Frontend page | `web/src/pages/dashboard/{page-name}/` | `index.tsx` + `index.module.css` + `index.ts` (optional) |
+| Frontend component | `web/src/components/{component-name}/` | `index.tsx` + `index.module.css` + `index.ts` (optional) |
+| Frontend context | `web/src/contexts/` | `{name}-context.tsx` |
+| Frontend types | `web/src/types/` | `{domain}.ts` |
+| Frontend utils | `web/src/utils/` | `{util-name}.ts` |
+
+**Note:** All filesystem names (folders and files) must be lowercase kebab-case.
 
 ## Service Template
 
@@ -124,8 +129,9 @@ export type IMyRepository = IDataRepository<IMyEntity>;
 - Import: `import { logger } from "@/logger";`
 - Services: `info` at entry/exit, `error` in catch, `warn` for guard clauses.
 - Repositories: `error` only, return gracefully (empty arrays).
-- Controllers: **no logging** — Morgan handles HTTP logging.
+- Controllers: **no logging** — Morgan handles HTTP logging via Winston stream.
 - Tests: mock the logger.
+- **Log format:** See [`backend-conventions.md` → Logger](./backend-conventions.md#logger) for timestamp format (ISO 8601 with milliseconds), log pattern, and Winston + Morgan integration.
 
 ## Test Template
 
@@ -160,11 +166,14 @@ describe("MyNewService", () => {
 - **`tsconfig.json`**: Pre-existing TypeScript config flags (e.g., `ignoreDeprecations`) exist for compatibility — do not remove without understanding why they were added.
 - **Excel export**: Prefer native browser APIs over heavy libraries. If a feature can be built with native APIs (e.g., Excel export via OOXML), justify any third-party dependency.
 - **Permission resolution**: Role > Direct UserPermission > `configured: false`.
+- **Do not skip Docker.** AI agents commonly omit Docker and output bare `npm run dev` instructions instead. This happens because: (a) Docker adds container wiring, volume mounts, and networking that increases code-generation surface area for the AI; (b) the AI optimizes for the fastest "runs on my machine" path; and (c) training data often shows simple local-dev patterns. **Fight this tendency.** Every project must ship with working `docker-compose.yml`, `Dockerfile` (multi-stage), `entrypoint.sh`, and `nginx.conf`. See [`docker-and-cicd.md`](./docker-and-cicd.md) for the full pattern.
+- **No uppercase filenames.** Never create files or folders with PascalCase (`MyComponent.tsx`) or camelCase (`myService.ts`). All filesystem names must be lowercase kebab-case. The only places where non-lowercase is allowed: environment variables (`VITE_API_URL`), CSS custom properties (`--color-primary`), and component function names inside files.
 
 ## Key Files
 
 | File | Purpose |
-|---|---|
+|---|---|---|
+| `server/src/logger.ts` | Winston + Morgan setup, log format, timestamp |
 | `server/src/routes/index.ts` | Route mounting order and auth boundary |
 | `server/src/repositories/index.ts` | DI container — all repository instances |
 | `server/src/adapters/index.ts` | DI container — all adapter instances |

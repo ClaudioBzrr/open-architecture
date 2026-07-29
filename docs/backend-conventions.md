@@ -30,6 +30,107 @@ server/src/
 
 **Key principle:** the folder names reflect the architectural layer, not the business domain. Business domains split into files/subdirectories _within_ each layer (`services/reports-service/`, `services/user-service/`, etc.).
 
+## Logger
+
+The logging setup lives in `server/src/logger.ts` and uses **Winston** as the logging framework with **Morgan** integrated as the HTTP request logger.
+
+### Winston + Morgan Integration
+
+Morgan is added as a middleware that writes every HTTP request to a custom stream, which feeds directly into Winston. This ensures all logs — application-level and HTTP-level — use the same transport, format, and destination.
+
+```typescript
+import winston from "winston";
+import morgan from "morgan";
+
+export const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL ?? "info",
+  format: winston.format.combine(
+    winston.format.timestamp({ format: "YYYY-MM-DDTHH:mm:ss.SSSZ" }),
+    winston.format.errors({ stack: true }),
+    winston.format.printf(({ timestamp, level, message, ...rest }) => {
+      return `${timestamp} [${level.toUpperCase()}] ${message} ${
+        Object.keys(rest).length ? JSON.stringify(rest) : ""
+      }`.trimEnd();
+    }),
+  ),
+  transports: [new winston.transports.Console()],
+});
+
+// Morgan writes to Winston via a custom stream
+export const morganMiddleware = morgan(
+  (tokens, req, res) => {
+    return [
+      tokens.method(req, res),
+      tokens.url(req, res),
+      tokens.status(req, res),
+      tokens["response-time"](req, res) + " ms",
+      "-",
+      tokens.res(req, res, "content-length") ?? "0",
+      "bytes",
+    ].join(" ");
+  },
+  {
+    stream: { write: (message: string) => logger.info(message.trim()) },
+  },
+);
+```
+
+### Log Date/Time Format
+
+All timestamps follow **ISO 8601 with timezone offset**:
+
+```
+YYYY-MM-DDTHH:mm:ss.SSSZ
+```
+
+**Examples:**
+
+```
+2024-01-15T10:30:00.123-03:00
+2024-06-20T14:05:42.987Z
+```
+
+- Uses 24-hour format (`HH`).
+- Includes milliseconds (`.SSS`).
+- Timezone offset (`Z` for UTC or `±HH:mm` for local).
+- Machine-parseable and human-readable, consistent across environments.
+
+### Log Pattern
+
+| Component | Pattern | Example |
+|---|---|---|
+| **Application logs** (Winston) | `{timestamp} [{LEVEL}] {message}` | `2024-01-15T10:30:00.123-03:00 [INFO] GenerateReportsService: starting...` |
+| **HTTP logs** (Morgan → Winston) | `{timestamp} [{LEVEL}] {METHOD} {URL} {STATUS} {RESPONSE_TIME} ms - {CONTENT_LENGTH} bytes` | `2024-01-15T10:30:01.456-03:00 [INFO] GET /api/reports 200 15.234 ms - 1024 bytes` |
+
+**Field details:**
+
+| Field | Meaning |
+|---|---|
+| `timestamp` | ISO 8601 with milliseconds and timezone |
+| `LEVEL` | Uppercase log level (INFO, WARN, ERROR) |
+| `METHOD` | HTTP method (GET, POST, PUT, DELETE) |
+| `URL` | Request path |
+| `STATUS` | HTTP response status code |
+| `RESPONSE_TIME` | Response time in milliseconds |
+| `CONTENT_LENGTH` | Response body size in bytes |
+
+### Log Levels
+
+| Level | When to use |
+|---|---|
+| `logger.info` | Entry/exit of service methods, lifecycle events |
+| `logger.warn` | Guard clauses, degraded states, non-critical issues |
+| `logger.error` | Catch blocks, unrecoverable errors |
+
+**Controllers never log directly** — Morgan handles all HTTP request logging.
+
+### Logging Rules
+
+1. **Services** — `info` at entry and exit, `error` in catch, `warn` for guard clauses.
+2. **Repositories** — `error` only, return gracefully (empty arrays / null).
+3. **Controllers** — **no logging**. Morgan handles HTTP logging globally.
+4. **Tests** — mock the logger to suppress output.
+
 ## Services
 
 ### Rules
@@ -98,6 +199,7 @@ export class GenerateReportsService {
       logger.info("Reports generated");
     } catch (err) {
       logger.error(`Error generating reports: ${err instanceof Error ? err.message : err}`);
+      throw err;  // rethrow so the controller can respond with the appropriate HTTP status
     }
   }
 }
