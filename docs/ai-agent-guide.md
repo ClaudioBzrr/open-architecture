@@ -45,7 +45,7 @@ New UI component?
 ## File Placement Rules
 
 | What | Where | Files |
-|---|---|---|---|
+|---|---|---|
 | Repository interface | `server/src/types/repositories/` | `{domain}-repository.ts` |
 | Repository implementation | `server/src/repositories/{prisma,fetch,db,xlsx,bcrypt}/` | `{source}-{entity}-repository.ts` |
 | Repository DI wiring | `server/src/repositories/index.ts` | `index.ts` |
@@ -172,7 +172,7 @@ describe("MyNewService", () => {
 ## Key Files
 
 | File | Purpose |
-|---|---|---|
+|---|---|
 | `server/src/logger.ts` | Winston + Morgan setup, log format, timestamp |
 | `server/src/routes/index.ts` | Route mounting order and auth boundary |
 | `server/src/repositories/index.ts` | DI container — all repository instances |
